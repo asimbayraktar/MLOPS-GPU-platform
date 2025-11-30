@@ -106,7 +106,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: trainer
-          image: <REGISTRY>/<NAMESPACE>/mlops-train:latest
+          image: mlops-train:latest
           imagePullPolicy: IfNotPresent
 
           resources:
