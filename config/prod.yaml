@@ -1,0 +1,27 @@
+# ============================================
+# Production Training Config
+# ============================================
+
+seed: 42
+
+model:
+  pretrained_name: "distilbert-base-uncased"
+  max_length: 128
+
+data:
+  dataset_path: "s3://datasets/large-dataset"
+  format: "csv"
+  val_ratio: 0.1   # better for large-scale
+
+training:
+  device: "cuda"
+  epochs: 3
+  batch_size: 32
+  learning_rate: 3e-5
+  logging_steps: 100
+  output_path: "s3://models/production"
+
+mlflow:
+  # K8s Job’larda env variable üzerinden override edilebilir:
+  # MLFLOW_TRACKING_URI=http://mlflow:5000
+  experiment_name: "prod-training"

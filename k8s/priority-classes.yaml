@@ -1,0 +1,16 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: mlops-prod-high
+value: 100000
+globalDefault: false
+description: "High priority for production GPU training jobs."
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: mlops-dev-low
+value: 1000
+globalDefault: false
+description: "Low priority for interactive / dev GPU training jobs."

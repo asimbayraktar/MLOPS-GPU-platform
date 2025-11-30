@@ -1,0 +1,32 @@
+# GPU destekli temel imaj
+FROM nvcr.io/nvidia/pytorch:24.01-py3
+
+# Loglar anında aksın
+ENV PYTHONUNBUFFERED=1
+
+# Uygulama dizini
+WORKDIR /app
+
+# Kod ve konfigürasyon dosyalarını kopyala
+COPY src /app/src
+COPY config /app/config
+
+# (Varsa) requirements dosyası da desteklenebilir
+# COPY requirements.txt /app/requirements.txt
+# RUN pip install --no-cache-dir -r requirements.txt
+
+# Şimdilik direkt paketleri yüklüyoruz
+RUN pip install --no-cache-dir \
+    transformers \
+    datasets \
+    mlflow \
+    boto3 \
+    pyyaml \
+    accelerate
+
+# Python modüllerinin /app'i görmesi için
+ENV PYTHONPATH=/app
+
+# Varsayılan komut:
+# Config dosyasını K8s veya docker run ile override edebilirsin.
+CMD ["python", "src/train.py", "--config", "config/prod.yaml"]

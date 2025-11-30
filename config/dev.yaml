@@ -1,0 +1,26 @@
+# ============================================
+# Interactive Development Config
+# ============================================
+
+seed: 42
+
+model:
+  pretrained_name: "distilbert-base-uncased"
+  max_length: 128
+
+data:
+  dataset_path: "./data/sample-small"   # local small dataset folder
+  format: "csv"
+  val_ratio: 0.2                        # if val.csv yoksa split
+
+training:
+  device: "cuda"
+  epochs: 1
+  batch_size: 8
+  learning_rate: 5e-5
+  logging_steps: 20
+  output_path: "./outputs/dev"
+
+mlflow:
+  tracking_uri: "http://localhost:5500"  # docker-compose ile local MLflow
+  experiment_name: "dev-experiments"

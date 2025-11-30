@@ -1,0 +1,159 @@
+# ============================================
+# PROD GPU TRAINING JOB
+# ============================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mlops-train-prod
+  labels:
+    app: mlops-train
+    env: prod
+spec:
+  backoffLimit: 3                       # Fail olursa en fazla 3 kere retry
+  ttlSecondsAfterFinished: 86400        # 1 gün sonra Job objesini temizle
+  template:
+    metadata:
+      labels:
+        app: mlops-train
+        env: prod
+    spec:
+      priorityClassName: mlops-prod-high   # priority-classes.yaml'da tanımlayacağız
+      restartPolicy: Never
+      containers:
+        - name: trainer
+          # Kendi registry ve tag'ini buraya koy:
+          image: <REGISTRY>/<NAMESPACE>/mlops-train:latest
+          imagePullPolicy: IfNotPresent
+
+          # GPU + CPU + RAM istek/limitleri
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              cpu: "4"
+              memory: "16Gi"
+            requests:
+              nvidia.com/gpu: 1
+              cpu: "2"
+              memory: "8Gi"
+
+          # train.py default'ta config/prod.yaml kullanıyor
+          # istersen override edebilirsin:
+          command: ["python"]
+          args:
+            - "src/train.py"
+            - "--config"
+            - "config/prod.yaml"
+
+          env:
+            # MLflow tracking URI (isteğe bağlı)
+            - name: MLFLOW_TRACKING_URI
+              value: "http://mlflow:5000"
+
+            # MinIO / S3 erişimi için örnek env değişkenleri
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: mlops-minio-credentials
+                  key: access_key
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mlops-minio-credentials
+                  key: secret_key
+            - name: AWS_DEFAULT_REGION
+              value: "us-east-1"
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: "http://minio:9000"
+
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            - name: outputs
+              mountPath: /app/outputs
+
+      volumes:
+        # Dataset için PVC
+        - name: data
+          persistentVolumeClaim:
+            claimName: mlops-data-pvc
+        # Model / output için PVC
+        - name: outputs
+          persistentVolumeClaim:
+            claimName: mlops-outputs-pvc
+
+---
+
+# ============================================
+# DEV GPU TRAINING JOB (daha düşük öncelik)
+# ============================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mlops-train-dev
+  labels:
+    app: mlops-train
+    env: dev
+spec:
+  backoffLimit: 1                       # Dev ortamda 1 retry yeterli
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: mlops-train
+        env: dev
+    spec:
+      priorityClassName: mlops-dev-low
+      restartPolicy: Never
+      containers:
+        - name: trainer
+          image: <REGISTRY>/<NAMESPACE>/mlops-train:latest
+          imagePullPolicy: IfNotPresent
+
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              cpu: "2"
+              memory: "8Gi"
+            requests:
+              nvidia.com/gpu: 1
+              cpu: "1"
+              memory: "4Gi"
+
+          # Dev config dosyasıyla çalıştırıyoruz
+          command: ["python"]
+          args:
+            - "src/train.py"
+            - "--config"
+            - "config/dev.yaml"
+
+          env:
+            - name: MLFLOW_TRACKING_URI
+              value: "http://mlflow:5000"
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: mlops-minio-credentials
+                  key: access_key
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mlops-minio-credentials
+                  key: secret_key
+            - name: AWS_DEFAULT_REGION
+              value: "us-east-1"
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: "http://minio:9000"
+
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            - name: outputs
+              mountPath: /app/outputs
+
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: mlops-data-pvc
+        - name: outputs
+          persistentVolumeClaim:
+            claimName: mlops-outputs-pvc
